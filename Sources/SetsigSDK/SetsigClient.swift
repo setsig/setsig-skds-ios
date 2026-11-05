@@ -25,10 +25,49 @@ public final class SetsigClient: @unchecked Sendable {
         urlReq.httpBody = try encoder.encode(request)
 
         let (data, response) = try await session.data(for: urlReq)
-        guard let httpRes = response as? HTTPURLResponse, (200...299).contains(httpRes.statusCode) else {
-            throw NSError(domain: "SetsigError", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [
-                NSLocalizedDescriptionKey: String(data: data, encoding: .utf8) ?? "Verification rejected"
-            ])
+        guard let httpRes = response as? HTTPURLResponse else {
+            throw SetsigError.apiError(statusCode: 500, code: "ERR_NETWORK", message: "Invalid HTTP response")
+        }
+
+        if !(200...299).contains(httpRes.statusCode) {
+            let errorJson = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+            let code = (errorJson["error_code"] as? String) ?? (errorJson["code"] as? String) ?? "ERR_UNKNOWN"
+            let message = (errorJson["message"] as? String) ?? String(data: data, encoding: .utf8) ?? "API Error"
+            let details = errorJson["details"] as? [String: Any]
+
+            switch code {
+            case "ERR_PAYWALL_BLOCKED":
+                throw SetsigError.paywallBlocked(
+                    paywallURL: details?["paywall_url"] as? String,
+                    currentBalance: details?["current_balance"] as? Double,
+                    message: message
+                )
+            case "ERR_CROSS_BORDER_CREDIT_REQUIRED":
+                throw SetsigError.crossBorderCreditRequired(message)
+            case "ERR_PAYWALL_TIER_REQUIRED":
+                throw SetsigError.paywallTierRequired(message)
+            case "ERR_ATTESTATION_FAILED":
+                throw SetsigError.attestationFailed(message)
+            case "ERR_VISUAL_PROOF_REQUIRED":
+                throw SetsigError.visualProofRequired(message)
+            case "ERR_STALE_VISUAL_PROOF":
+                throw SetsigError.staleVisualProof(message)
+            case "ERR_INVALID_IMAGE_HASH":
+                throw SetsigError.invalidImageHash(message)
+            case "ERR_GEOFENCE_OUT_OF_BOUNDS":
+                throw SetsigError.geofenceOutOfBounds(message)
+            case "ERR_REPLAY_DETECTED":
+                throw SetsigError.replayDetected(message)
+            default:
+                if httpRes.statusCode == 401 || httpRes.statusCode == 403 {
+                    throw SetsigError.authenticationFailed(message)
+                } else if httpRes.statusCode == 402 {
+                    throw SetsigError.insufficientCredits(message)
+                } else if httpRes.statusCode == 429 {
+                    throw SetsigError.rateLimitExceeded(message)
+                }
+                throw SetsigError.apiError(statusCode: httpRes.statusCode, code: code, message: message)
+            }
         }
 
         let decoder = JSONDecoder()
