@@ -20,6 +20,7 @@ public final class SetsigClient: @unchecked Sendable {
         urlReq.httpMethod = "POST"
         urlReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlReq.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        urlReq.setValue("sdk-ios/0.8.0", forHTTPHeaderField: "X-Setsig-Client")
 
         let encoder = JSONEncoder()
         urlReq.httpBody = try encoder.encode(request)
@@ -84,6 +85,7 @@ public final class SetsigClient: @unchecked Sendable {
         urlReq.httpMethod = "POST"
         urlReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlReq.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        urlReq.setValue("sdk-ios/0.8.0", forHTTPHeaderField: "X-Setsig-Client")
 
         let body: [String: Any] = [
             "venue_id": venueID,
@@ -106,6 +108,7 @@ public final class SetsigClient: @unchecked Sendable {
         urlReq.httpMethod = "POST"
         urlReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlReq.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        urlReq.setValue("sdk-ios/0.8.0", forHTTPHeaderField: "X-Setsig-Client")
 
         let body = ["venue_id": venueID]
         urlReq.httpBody = try JSONSerialization.data(withJSONObject: body)
